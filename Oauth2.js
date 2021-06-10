@@ -1,92 +1,56 @@
 /**
- * Logs the redirect URI to register.
+ * Logs the redirect URI set up for the client
+ *  -- run this function to manually grant permissions
  */
 function logRedirectUri() {
-  var service = getSmartService();
+  var service = getService();
   Logger.log(service.getRedirectUri());
+  service.reset();
+  if (service.hasAccess()) {
+      // get the access token
+      const access_token = service.getAccessToken();
+  } else {
+    var authorizationUrl = service.getAuthorizationUrl();
+    Logger.log('Open the following URL and re-run the script: %s', authorizationUrl);
+  }
 }
 
 /**
- * Create the OAuth 2 service
+ * Create the OAuth2 service helper
  */
-function getSmartService() {
+function getService() {
   // Create a new service with the given name. The name will be used when
   // persisting the authorized token, so ensure it is unique within the
   // scope of the property store.
   return OAuth2.createService('smd')
+      // Set the endpoint URLs.
+      .setAuthorizationBaseUrl('https://accounts.google.com/o/oauth2/v2/auth')
+      .setTokenUrl('https://oauth2.googleapis.com/token')
 
-      // Set the endpoint URLs, which are the same for all Google services.
-      .setAuthorizationBaseUrl('https://nestservices.google.com/partnerconnections/' + PROJECT_ID + '/auth')
-      .setTokenUrl('https://www.googleapis.com/oauth2/v4/token')
-
-      // Set the client ID and secret, from the Google Developers Console.
+      // Set the client ID and secret.
       .setClientId(OAUTH_CLIENT_ID)
       .setClientSecret(OAUTH_CLIENT_SECRET)
 
-      // Set the name of the callback function in the script referenced
-      // above that should be invoked to complete the OAuth flow.
+      // Set the name of the callback function that should be invoked to
+      // complete the OAuth flow.
       .setCallbackFunction('authCallback')
 
       // Set the property store where authorized tokens should be persisted.
       .setPropertyStore(PropertiesService.getUserProperties())
 
-      // Set the scopes to request (space-separated for Google services).
+      // Set the scope and additional Google-specific parameters.
       .setScope('https://www.googleapis.com/auth/sdm.service')
-
-      // Below are Google-specific OAuth2 parameters.
-
-      // Sets the login hint, which will prevent the account chooser screen
-      // from being shown to users logged in with multiple accounts.
-      .setParam('login_hint', Session.getEffectiveUser().getEmail())
-
-      // Requests offline access.
       .setParam('access_type', 'offline')
-
-      // Consent prompt is required to ensure a refresh token is always
-      // returned when requesting offline access.
-      .setParam('prompt', 'consent');
+      .setParam('approval_prompt', 'force')
+      .setParam('login_hint', Session.getActiveUser().getEmail());
 }
 
 /**
- * Direct the user to the authorization URL
- */
-function showSidebar() {
-  
-  const smartService = getSmartService();
-  
-  if (!smartService.hasAccess()) {
-
-    // App does not have access yet
-    const authorizationUrl = smartService.getAuthorizationUrl();
-
-    const template = HtmlService.createTemplate(
-        '<a href="<?= authorizationUrl ?>" target="_blank">Authorize</a>. ' +
-        'Reopen the sidebar when the authorization is complete.');
-    
-    template.authorizationUrl = authorizationUrl;
-    
-    const page = template.evaluate();
-
-    SpreadsheetApp.getUi().showSidebar(page);
-
-  } else {
-    // App has access
-    console.log('App has access');
-    
-    // make the API request
-    makeRequest();
-  }
-}
-
-/**
- * Handle the callback
+ * Report success or failure of permissions
  */
 function authCallback(request) {
-  
-  const smartService = getSmartService();
-  
-  const isAuthorized = smartService.handleCallback(request);
-  
+  const service = getService();
+  const isAuthorized = service.handleCallback(request);
   if (isAuthorized) {
     return HtmlService.createHtmlOutput('Success! You can close this tab.');
   } else {
