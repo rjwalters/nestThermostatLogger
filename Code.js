@@ -1,6 +1,6 @@
 /**
  * June 9, 2021
- * 
+ *
  * based on project at https://www.benlcollins.com/apps-script/nest-thermostat/
  *
  */
@@ -52,7 +52,7 @@ async function getWeather() {
       }
     }
   }
-  
+
   for (const p in w1) {
     if (w1.hasOwnProperty(p)) {
       maybeAverage(p);
@@ -87,10 +87,10 @@ async function getThermostat() {
     // url fetch to call api
     const response = await UrlFetchApp.fetch(url + endpoint, params);
     const nestData = JSON.parse(response.getContentText());
-    
+
     // I have only one Nest device so I don't need to hunt for it
-    const thermostatData = nestData['devices'][0]['traits']; 
- 
+    const thermostatData = nestData['devices'][0]['traits'];
+
     data['info'] = thermostatData["sdm.devices.traits.Info"]
     data['humidity'] = thermostatData["sdm.devices.traits.Humidity"];
     data['connectivity'] = thermostatData["sdm.devices.traits.Connectivity"];
@@ -100,7 +100,7 @@ async function getThermostat() {
     data['thermostatHvac'] = thermostatData["sdm.devices.traits.ThermostatHvac"];
     data['thermostatTemperatureSetpoint'] = thermostatData["sdm.devices.traits.ThermostatTemperatureSetpoint"];
     data['temperature'] = thermostatData["sdm.devices.traits.Temperature"];
- 
+
   }
   catch (e) {
     Logger.log('Error: ' + e);
@@ -116,13 +116,13 @@ async function measure() {
   function convertCtoF(tempC) {
     return tempC * 1.8 + 32.0;
   }
-  
+
   let thermostat_promise = getThermostat();
   let weather_promise = getWeather();
   const async_data = await Promise.all([thermostat_promise, weather_promise])
   const thermostat = async_data[0]
   const weather = async_data[1]
-  
+
   let data = [];
   data.push(
     new Date(),
@@ -138,7 +138,7 @@ async function measure() {
     (thermostat['thermostatEco']['mode'] === 'OFF') ? convertCtoF(thermostat['thermostatTemperatureSetpoint']['heatCelsius']) : convertCtoF(thermostat['thermostatEco']['heatCelsius']),
   );
   // Logger.log('measurement: ' + JSON.stringify(data));
-  return data;       
+  return data;
 }
 
 /**
@@ -149,7 +149,7 @@ async function logMeasurement() {
     let startDate = new Date();
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName('thermostatLogs');
-    
+
      // add header if needed
     if ( sheet.getLastRow() == 0 ) {
       headers = [
@@ -167,7 +167,7 @@ async function logMeasurement() {
       ];
       sheet.getRange(sheet.getLastRow()+1, 1, 1, headers.length).setValues([headers]);
     }
-    
+
     data = await measure();
     sheet.getRange(sheet.getLastRow()+1, 1, 1, data.length).setValues([data]);
     let endDate = new Date();

@@ -9,7 +9,7 @@ The SDM API was launched in September 2020 ([read more](https://developers.googl
 * collects slightly different data
 * assumes only one thermostat
 * gets oauth token from accounts.google.com rather than nestservices.google.com
-* async data collection 
+* async data collection
 * averages weather data from two local stations
 
 # Setup
