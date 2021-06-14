@@ -47,7 +47,7 @@ async function getWeather() {
   // overwrite w1 with average value when possible
   function maybeAverage(p) {
     if ((typeof w1[p] === 'number') && (typeof w2[p] === 'number')) {
-      if (w1[p] && w2[p]) {
+      if (p === 'windDirection') {
         w1s = w1['windSpeed'];
         w2s = w2['windSpeed'];
         // use a vector average for wind
