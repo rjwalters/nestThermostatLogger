@@ -26,5 +26,5 @@ This project uses the [OAuth2 Apps Script library](https://github.com/googlework
 
 Tutorial setup details on [https://www.benlcollins.com/apps-script/nest-thermostat/](https://www.benlcollins.com/apps-script/nest-thermostat/)
 
-I had trouble getting setting up permissions in oauth and managed to get it to work by running the `logRedirectUri()` function within Apps Script.
+I had trouble setting up permissions in oauth and then managed to get it to work by running the `logRedirectUri()` function within Apps Script to trigger the ui flow that stores a token.
 

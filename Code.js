@@ -48,6 +48,18 @@ async function getWeather() {
   function maybeAverage(p) {
     if ((typeof w1[p] === 'number') && (typeof w2[p] === 'number')) {
       if (w1[p] && w2[p]) {
+        w1s = w1['windSpeed'];
+        w2s = w2['windSpeed'];
+        // use a vector average for wind
+        let x = (w1s * Math.cos(w1[p] * Math.PI / 180) + w2s * Math.cos(w2[p]* Math.PI / 180)) / 2.0;
+        let y = (w1s * Math.sin(w1[p] * Math.PI / 180) + w2s * Math.sin(w2[p]* Math.PI / 180)) / 2.0;
+        w1[p] = 180 / Math.PI * Math.atan2(y,x);
+        if (w1[p] < 0) {
+          w1[p] += 360;
+        }
+        w1['windSpeed'] = Math.sqrt(x*x + y*y);
+      }
+      else if (p !== 'windSpeed') { // set by vector average
         w1[p] = (w1[p] + w2[p]) / 2.0;
       }
     }
@@ -58,7 +70,7 @@ async function getWeather() {
       maybeAverage(p);
     }
     else {
-      // if this data is missing in the primary data, get from secondary
+      // if data is missing from the primary station, try to get from secondary
       w1[p] = w2[p];
     }
   }
@@ -105,7 +117,7 @@ async function getThermostat() {
   catch (e) {
     Logger.log('Error: ' + e);
   }
-  // Logger.log('thermostat data: ' + JSON.stringify(data));
+  // Logger.log('Thermostat: ' + JSON.stringify(data));
   return data;
 }
 
@@ -114,7 +126,8 @@ async function getThermostat() {
  */
 async function measure() {
   function convertCtoF(tempC) {
-    return tempC * 1.8 + 32.0;
+    // weather api sometimes returns null
+    return (typeof tempC === 'number') ? tempC * 1.8 + 32.0 : tempC;
   }
 
   let thermostat_promise = getThermostat();
@@ -122,6 +135,17 @@ async function measure() {
   const async_data = await Promise.all([thermostat_promise, weather_promise])
   const thermostat = async_data[0]
   const weather = async_data[1]
+
+  // setpoints depend on mode
+  let cooling_setpoint = 0;
+  let heating_setpoint = 0;
+  let eco_off = (thermostat['thermostatEco']['mode'] === 'OFF');
+  if ( thermostat['thermostatMode']['mode'] === 'COOL' || thermostat['thermostatMode']['mode'] === 'HEATCOOL') {
+    cooling_setpoint = eco_off ? convertCtoF(thermostat['thermostatTemperatureSetpoint']['coolCelsius']) : convertCtoF(thermostat['thermostatEco']['coolCelsius']);
+  }
+  if ( thermostat['thermostatMode']['mode'] === 'HEAT' || thermostat['thermostatMode']['mode'] === 'HEATCOOL') {
+    heating_setpoint = eco_off ? convertCtoF(thermostat['thermostatTemperatureSetpoint']['heatCelsius']) : convertCtoF(thermostat['thermostatEco']['heatCelsius']);
+  }
 
   let data = [];
   data.push(
@@ -133,9 +157,10 @@ async function measure() {
     weather['relativeHumidity'],
     thermostat['thermostatHvac']['status'],
     thermostat['connectivity']['status'],
+    thermostat['thermostatMode']['mode'],
     thermostat['thermostatEco']['mode'],
-    (thermostat['thermostatEco']['mode'] === 'OFF') ? convertCtoF(thermostat['thermostatTemperatureSetpoint']['coolCelsius']) : convertCtoF(thermostat['thermostatEco']['coolCelsius']),
-    (thermostat['thermostatEco']['mode'] === 'OFF') ? convertCtoF(thermostat['thermostatTemperatureSetpoint']['heatCelsius']) : convertCtoF(thermostat['thermostatEco']['heatCelsius']),
+    cooling_setpoint,
+    heating_setpoint
   );
   // Logger.log('measurement: ' + JSON.stringify(data));
   return data;
@@ -161,6 +186,7 @@ async function logMeasurement() {
         'Outside Humidity',
         'HVAC status',
         'Nest status',
+        'HVAC Mode',
         'Nest Eco Mode',
         'Cooling Setpoint',
         'Heating Setpoint'
